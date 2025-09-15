@@ -1,0 +1,87 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - users can only read/write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Appointments collection
+    match /appointments/{appointmentId} {
+      // Patients can read/write their own appointments
+      allow read, write: if request.auth != null && 
+        (request.auth.uid == resource.data.patientId || 
+         request.auth.uid == resource.data.doctorId);
+      
+      // Allow creation if user is the patient
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.patientId;
+    }
+    
+    // Doctors collection - read-only for authenticated users
+    match /doctors/{doctorId} {
+      allow read: if request.auth != null;
+      // Only doctors can update their own profiles
+      allow write: if request.auth != null && request.auth.uid == doctorId;
+    }
+    
+    // Booths collection - read-only for authenticated users
+    match /booths/{boothId} {
+      allow read: if request.auth != null;
+      // Only allow status updates for booth usage
+      allow update: if request.auth != null && 
+        request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['status', 'currentUserId', 'lastUsedAt', 'updatedAt']);
+    }
+    
+    // Documents collection - users can only access their own documents
+    match /documents/{documentId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow creation if user is the owner
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Health metrics collection - users can only access their own data
+    match /health_metrics/{userId}/metrics/{metricId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Reviews collection for doctors
+    match /reviews/{reviewId} {
+      // Users can read all reviews but only write their own
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        request.auth.uid == resource.data.reviewerId;
+      
+      // Allow creation if user is the reviewer
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.reviewerId;
+    }
+    
+    // System collections (admin only) - restricted access
+    match /system/{document=**} {
+      allow read, write: if false; // Deny all access through client
+    }
+    
+    // Utility functions for validation
+    function isValidUser() {
+      return request.auth != null && request.auth.uid != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    function isValidEmail(email) {
+      return email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+    
+    function isValidPhone(phone) {
+      return phone == null || phone.matches('^\\+?[1-9]\\d{1,14}$');
+    }
+  }
+}

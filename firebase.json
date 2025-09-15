@@ -1,0 +1,29 @@
+{
+    "firestore": {
+        "rules": "firestore.rules",
+        "indexes": "firestore.indexes.json"
+    },
+    "flutter": {
+        "platforms": {
+            "android": {
+                "default": {
+                    "projectId": "portcare-utkarsh",
+                    "appId": "1:820521949909:android:9b994148d5b4e945c2e05c",
+                    "fileOutput": "android/app/google-services.json"
+                }
+            },
+            "dart": {
+                "lib/firebase_options.dart": {
+                    "projectId": "portcare-utkarsh",
+                    "configurations": {
+                        "android": "1:820521949909:android:9b994148d5b4e945c2e05c",
+                        "ios": "1:820521949909:ios:402e5ae9d8397581c2e05c",
+                        "macos": "1:820521949909:ios:402e5ae9d8397581c2e05c",
+                        "web": "1:820521949909:web:a4612bd2a001e012c2e05c",
+                        "windows": "1:820521949909:web:b8273ead080c1eccc2e05c"
+                    }
+                }
+            }
+        }
+    }
+}

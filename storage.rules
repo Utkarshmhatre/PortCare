@@ -1,0 +1,49 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // User profile photos
+    match /profiles/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // User documents - encrypted and access controlled
+    match /documents/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // File size limit: 10MB
+      allow write: if request.resource.size < 10 * 1024 * 1024;
+      
+      // Only allow specific file types
+      allow write: if resource == null || // Allow new files
+        request.resource.contentType.matches('application/pdf') ||
+        request.resource.contentType.matches('image/.*') ||
+        request.resource.contentType.matches('text/plain');
+    }
+    
+    // Document thumbnails
+    match /thumbnails/{userId}/{allPaths=**} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Doctor profile photos (public read, doctor write)
+    match /doctors/{doctorId}/profile.{extension} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == doctorId;
+    }
+    
+    // System files (admin only)
+    match /system/{allPaths=**} {
+      allow read, write: if false; // Deny all client access
+    }
+    
+    // Temporary uploads (for processing)
+    match /temp/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Auto-delete after 24 hours (handled by Cloud Functions)
+      allow write: if request.resource.size < 50 * 1024 * 1024; // 50MB limit for temp files
+    }
+  }
+}
