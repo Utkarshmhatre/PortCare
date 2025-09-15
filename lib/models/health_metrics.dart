@@ -176,9 +176,11 @@ class Consultation {
       appointmentId: map['appointmentId'] as String,
       doctorName: map['doctorName'] as String,
       consultationDate: (map['consultationDate'] as Timestamp).toDate(),
-      prescriptions: (map['prescriptions'] as List<dynamic>?)
-          ?.map((p) => Prescription.fromMap(p as Map<String, dynamic>))
-          .toList() ?? [],
+      prescriptions:
+          (map['prescriptions'] as List<dynamic>?)
+              ?.map((p) => Prescription.fromMap(p as Map<String, dynamic>))
+              .toList() ??
+          [],
       diagnosis: map['diagnosis'] as String?,
       notes: map['notes'] as String?,
       followUpDate: map['followUpDate'] != null
@@ -198,7 +200,9 @@ class Consultation {
       'prescriptions': prescriptions.map((p) => p.toMap()).toList(),
       'diagnosis': diagnosis,
       'notes': notes,
-      'followUpDate': followUpDate != null ? Timestamp.fromDate(followUpDate!) : null,
+      'followUpDate': followUpDate != null
+          ? Timestamp.fromDate(followUpDate!)
+          : null,
       'metadata': metadata,
     };
   }
@@ -419,9 +423,11 @@ class HealthMetricsSummary {
           (value as num).toDouble(),
         ),
       ),
-      activeGoals: (map['activeGoals'] as List<dynamic>?)
-          ?.map((g) => HealthGoal.fromMap(g as Map<String, dynamic>))
-          .toList() ?? [],
+      activeGoals:
+          (map['activeGoals'] as List<dynamic>?)
+              ?.map((g) => HealthGoal.fromMap(g as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -429,8 +435,12 @@ class HealthMetricsSummary {
     return {
       'totalMetrics': totalMetrics,
       'lastUpdated': Timestamp.fromDate(lastUpdated),
-      'latestValues': latestValues.map((key, value) => MapEntry(key.value, value)),
-      'weeklyAverages': weeklyAverages.map((key, value) => MapEntry(key.value, value)),
+      'latestValues': latestValues.map(
+        (key, value) => MapEntry(key.value, value),
+      ),
+      'weeklyAverages': weeklyAverages.map(
+        (key, value) => MapEntry(key.value, value),
+      ),
       'activeGoals': activeGoals.map((g) => g.toMap()).toList(),
     };
   }

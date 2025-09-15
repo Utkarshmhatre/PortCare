@@ -14,7 +14,8 @@ class HealthScreen extends StatefulWidget {
   State<HealthScreen> createState() => _HealthScreenState();
 }
 
-class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMixin {
+class _HealthScreenState extends State<HealthScreen>
+    with TickerProviderStateMixin {
   late TabController _tabController;
   late HealthService _healthService;
 
@@ -58,7 +59,6 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
 
       // Load recent consultations
       _recentConsultations = await _healthService.getConsultations();
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -151,7 +151,8 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
               Expanded(
                 child: _buildMetricCard(
                   'Steps',
-                  _latestValues[HealthMetricType.steps]?.toInt().toString() ?? '0',
+                  _latestValues[HealthMetricType.steps]?.toInt().toString() ??
+                      '0',
                   Icons.directions_walk,
                   AppColors.accentGreen,
                 ),
@@ -173,7 +174,9 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
           if (_activeGoals.isNotEmpty) ...[
             Text(
               'Active Goals',
-              style: AppTypography.h2Style.copyWith(color: AppColors.textPrimary),
+              style: AppTypography.h2Style.copyWith(
+                color: AppColors.textPrimary,
+              ),
             ),
             SizedBox(height: AppSpacing.md),
             ..._activeGoals.map((goal) => _buildGoalCard(goal)),
@@ -264,7 +267,12 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
           );
   }
 
-  Widget _buildMetricCard(String title, String value, IconData icon, Color color) {
+  Widget _buildMetricCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: AppSpacing.mdAll,
       decoration: BoxDecoration(
@@ -285,9 +293,7 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
           ),
           Text(
             value,
-            style: AppTypography.h2Style.copyWith(
-              color: AppColors.textPrimary,
-            ),
+            style: AppTypography.h2Style.copyWith(color: AppColors.textPrimary),
           ),
         ],
       ),
@@ -324,10 +330,10 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
           ),
           SizedBox(height: AppSpacing.sm),
           Text(
-            value != null ? '${value.toStringAsFixed(1)} ${type.unit}' : 'No data',
-            style: AppTypography.h1Style.copyWith(
-              color: AppColors.textPrimary,
-            ),
+            value != null
+                ? '${value.toStringAsFixed(1)} ${type.unit}'
+                : 'No data',
+            style: AppTypography.h1Style.copyWith(color: AppColors.textPrimary),
           ),
           if (metrics.length > 1) ...[
             SizedBox(height: AppSpacing.sm),
@@ -359,7 +365,11 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
         children: [
           Row(
             children: [
-              Icon(_getMetricIcon(goal.metricType), color: AppColors.primary, size: 20),
+              Icon(
+                _getMetricIcon(goal.metricType),
+                color: AppColors.primary,
+                size: 20,
+              ),
               SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
@@ -399,11 +409,7 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
       ),
       child: Row(
         children: [
-          Icon(
-            _getMetricIcon(metric.type),
-            color: AppColors.primary,
-            size: 20,
-          ),
+          Icon(_getMetricIcon(metric.type), color: AppColors.primary, size: 20),
           SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
@@ -645,7 +651,9 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               'Cancel',
-              style: AppTypography.bodyLargeStyle.copyWith(color: AppColors.primary),
+              style: AppTypography.bodyLargeStyle.copyWith(
+                color: AppColors.primary,
+              ),
             ),
           ),
         ],
@@ -674,9 +682,7 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
               keyboardType: TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 labelText: 'Value (${type.unit})',
-                border: OutlineInputBorder(
-                  borderRadius: AppRadius.mdRadius,
-                ),
+                border: OutlineInputBorder(borderRadius: AppRadius.mdRadius),
               ),
             ),
             SizedBox(height: AppSpacing.md),
@@ -684,9 +690,7 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
               controller: notesController,
               decoration: InputDecoration(
                 labelText: 'Notes (optional)',
-                border: OutlineInputBorder(
-                  borderRadius: AppRadius.mdRadius,
-                ),
+                border: OutlineInputBorder(borderRadius: AppRadius.mdRadius),
               ),
             ),
           ],
@@ -696,7 +700,9 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               'Cancel',
-              style: AppTypography.bodyLargeStyle.copyWith(color: AppColors.textSecondary),
+              style: AppTypography.bodyLargeStyle.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
           ElevatedButton(
@@ -707,7 +713,9 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
                   await _healthService.addManualMetric(
                     type: type,
                     value: value,
-                    notes: notesController.text.isNotEmpty ? notesController.text : null,
+                    notes: notesController.text.isNotEmpty
+                        ? notesController.text
+                        : null,
                   );
                   Navigator.of(context).pop();
                   _initializeHealthData(); // Refresh data
@@ -721,9 +729,7 @@ class _HealthScreenState extends State<HealthScreen> with TickerProviderStateMix
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: AppRadius.mdRadius,
-              ),
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.mdRadius),
             ),
             child: Text('Add'),
           ),

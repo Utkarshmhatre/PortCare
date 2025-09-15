@@ -36,14 +36,17 @@ class NotificationService {
   NotificationService._internal();
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
-  final StreamController<RemoteMessage> _notificationController = StreamController<RemoteMessage>.broadcast();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+  final StreamController<RemoteMessage> _notificationController =
+      StreamController<RemoteMessage>.broadcast();
 
   String? _currentUserId;
   bool _isInitialized = false;
 
   // Getters
-  Stream<RemoteMessage> get notificationStream => _notificationController.stream;
+  Stream<RemoteMessage> get notificationStream =>
+      _notificationController.stream;
   bool get isInitialized => _isInitialized;
 
   /// Initialize the notification service
@@ -82,11 +85,14 @@ class NotificationService {
       );
 
       // Request local notification permissions
-      final androidPlugin = _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final androidPlugin = _localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       final localPermission = await androidPlugin?.areNotificationsEnabled();
 
       return settings.authorizationStatus == AuthorizationStatus.authorized &&
-             (localPermission ?? true);
+          (localPermission ?? true);
     } catch (e) {
       debugPrint('Error requesting notification permissions: $e');
       return false;
@@ -95,7 +101,9 @@ class NotificationService {
 
   /// Initialize local notifications
   Future<void> _initializeLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -156,19 +164,27 @@ class NotificationService {
     );
 
     await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(appointmentChannel);
 
     await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(boothChannel);
 
     await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(emergencyChannel);
 
     await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(systemChannel);
   }
 
@@ -255,7 +271,9 @@ class NotificationService {
     if (notification == null) return;
 
     final notificationData = message.data;
-    final type = NotificationType.fromString(notificationData['type'] ?? 'system');
+    final type = NotificationType.fromString(
+      notificationData['type'] ?? 'system',
+    );
 
     final androidDetails = AndroidNotificationDetails(
       _getChannelId(type),
@@ -308,7 +326,9 @@ class NotificationService {
   }
 
   /// Handle notification navigation from data
-  Future<void> _handleNotificationNavigationFromData(Map<String, dynamic> data) async {
+  Future<void> _handleNotificationNavigationFromData(
+    Map<String, dynamic> data,
+  ) async {
     final deepLink = data['deepLink'] as String?;
     if (deepLink == null) return;
 
@@ -328,7 +348,10 @@ class NotificationService {
     required String body,
     required DateTime scheduledTime,
   }) async {
-    final scheduledDate = tz.TZDateTime.from(scheduledTime.subtract(const Duration(minutes: 30)), tz.local); // 30 min before
+    final scheduledDate = tz.TZDateTime.from(
+      scheduledTime.subtract(const Duration(minutes: 30)),
+      tz.local,
+    ); // 30 min before
 
     if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) return;
 
@@ -353,7 +376,8 @@ class NotificationService {
       ),
       androidAllowWhileIdle: true,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
       payload: json.encode({
         'type': 'appointment_reminder',
         'appointmentId': appointmentId,
@@ -411,7 +435,9 @@ class NotificationService {
 
   /// Get notification importance
   Importance _getImportance(NotificationType? type) {
-    return type == NotificationType.emergency ? Importance.max : Importance.high;
+    return type == NotificationType.emergency
+        ? Importance.max
+        : Importance.high;
   }
 
   /// Get notification priority

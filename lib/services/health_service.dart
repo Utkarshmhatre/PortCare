@@ -30,8 +30,10 @@ class HealthService {
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   // Controllers
-  final StreamController<HealthMetric> _healthDataController = StreamController<HealthMetric>.broadcast();
-  final StreamController<String> _errorController = StreamController<String>.broadcast();
+  final StreamController<HealthMetric> _healthDataController =
+      StreamController<HealthMetric>.broadcast();
+  final StreamController<String> _errorController =
+      StreamController<String>.broadcast();
 
   // State
   bool _isInitialized = false;
@@ -57,15 +59,24 @@ class HealthService {
     Hive.registerAdapter(ConsultationAdapter());
     Hive.registerAdapter(HealthGoalAdapter());
 
-    _healthMetricsBox = await Hive.openBox<HealthMetric>('health_metrics_$userId');
-    _consultationsBox = await Hive.openBox<Consultation>('consultations_$userId');
+    _healthMetricsBox = await Hive.openBox<HealthMetric>(
+      'health_metrics_$userId',
+    );
+    _consultationsBox = await Hive.openBox<Consultation>(
+      'consultations_$userId',
+    );
     _healthGoalsBox = await Hive.openBox<HealthGoal>('health_goals_$userId');
 
     // Setup connectivity monitoring
-    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
+      _onConnectivityChanged,
+    );
 
     // Start periodic sync
-    _syncTimer = Timer.periodic(const Duration(minutes: 15), (_) => _syncDataToFirestore());
+    _syncTimer = Timer.periodic(
+      const Duration(minutes: 15),
+      (_) => _syncDataToFirestore(),
+    );
 
     _isInitialized = true;
   }
@@ -92,8 +103,13 @@ class HealthService {
         HealthDataType.DISTANCE_WALKING_RUNNING,
       ];
 
-      final permissions = healthTypes.map((type) => HealthDataAccess.READ).toList();
-      final hasPermissions = await _health.requestAuthorization(healthTypes, permissions: permissions);
+      final permissions = healthTypes
+          .map((type) => HealthDataAccess.READ)
+          .toList();
+      final hasPermissions = await _health.requestAuthorization(
+        healthTypes,
+        permissions: permissions,
+      );
 
       if (!hasPermissions) {
         _errorController.add('Health data permissions denied');
@@ -120,7 +136,8 @@ class HealthService {
 
       _pedestrianStatusSubscription = Pedometer.pedestrianStatusStream.listen(
         _onPedestrianStatus,
-        onError: (error) => _errorController.add('Pedestrian status error: $error'),
+        onError: (error) =>
+            _errorController.add('Pedestrian status error: $error'),
       );
 
       // Start collecting data from Health API
@@ -174,7 +191,9 @@ class HealthService {
 
       // Sync to Firestore if online
       final connectivityResults = await _connectivity.checkConnectivity();
-      final connectivityResult = connectivityResults.isNotEmpty ? connectivityResults.first : ConnectivityResult.none;
+      final connectivityResult = connectivityResults.isNotEmpty
+          ? connectivityResults.first
+          : ConnectivityResult.none;
       if (connectivityResult != ConnectivityResult.none) {
         await _syncMetricToFirestore(metric);
       }
@@ -193,7 +212,9 @@ class HealthService {
 
     try {
       final metrics = _healthMetricsBox.values.where((metric) {
-        final inRange = metric.recordedAt.isAfter(startDate) && metric.recordedAt.isBefore(endDate);
+        final inRange =
+            metric.recordedAt.isAfter(startDate) &&
+            metric.recordedAt.isBefore(endDate);
         final typeMatch = type == null || metric.type == type;
         return inRange && typeMatch;
       }).toList();
@@ -237,7 +258,9 @@ class HealthService {
 
       // Sync to Firestore
       final connectivityResults = await _connectivity.checkConnectivity();
-      final connectivityResult = connectivityResults.isNotEmpty ? connectivityResults.first : ConnectivityResult.none;
+      final connectivityResult = connectivityResults.isNotEmpty
+          ? connectivityResults.first
+          : ConnectivityResult.none;
       if (connectivityResult != ConnectivityResult.none) {
         await _syncConsultationToFirestore(consultation);
       }
@@ -252,7 +275,9 @@ class HealthService {
 
     try {
       final consultations = _consultationsBox.values.toList();
-      consultations.sort((a, b) => b.consultationDate.compareTo(a.consultationDate));
+      consultations.sort(
+        (a, b) => b.consultationDate.compareTo(a.consultationDate),
+      );
       return consultations;
     } catch (e) {
       _errorController.add('Error getting consultations: $e');
@@ -269,7 +294,9 @@ class HealthService {
 
       // Sync to Firestore
       final connectivityResults = await _connectivity.checkConnectivity();
-      final connectivityResult = connectivityResults.isNotEmpty ? connectivityResults.first : ConnectivityResult.none;
+      final connectivityResult = connectivityResults.isNotEmpty
+          ? connectivityResults.first
+          : ConnectivityResult.none;
       if (connectivityResult != ConnectivityResult.none) {
         await _syncGoalToFirestore(goal);
       }
@@ -416,10 +443,7 @@ class HealthService {
       unit: unit,
       recordedAt: data.dateTo,
       source: HealthDataSource.wearable,
-      metadata: {
-        'sourceId': data.sourceId,
-        'sourceName': data.sourceName,
-      },
+      metadata: {'sourceId': data.sourceId, 'sourceName': data.sourceName},
     );
   }
 
@@ -445,7 +469,9 @@ class HealthService {
 
     try {
       // Sync metrics
-      final unsyncedMetrics = _healthMetricsBox.values.where((m) => true).toList(); // All local metrics
+      final unsyncedMetrics = _healthMetricsBox.values
+          .where((m) => true)
+          .toList(); // All local metrics
       for (final metric in unsyncedMetrics) {
         await _syncMetricToFirestore(metric);
       }

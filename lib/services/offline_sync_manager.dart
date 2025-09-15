@@ -49,7 +49,9 @@ class QueuedOperation {
       id: map['id'] as String,
       collection: map['collection'] as String,
       documentId: map['documentId'] as String,
-      operationType: SyncOperationType.fromString(map['operationType'] as String)!,
+      operationType: SyncOperationType.fromString(
+        map['operationType'] as String,
+      )!,
       data: map['data'] as Map<String, dynamic>,
       timestamp: DateTime.parse(map['timestamp'] as String),
       retryCount: map['retryCount'] as int? ?? 0,
@@ -70,9 +72,7 @@ class QueuedOperation {
     };
   }
 
-  QueuedOperation copyWith({
-    int? retryCount,
-  }) {
+  QueuedOperation copyWith({int? retryCount}) {
     return QueuedOperation(
       id: id,
       collection: collection,
@@ -123,10 +123,14 @@ class OfflineSyncManager {
 
     // Initialize Hive boxes
     _queueBox = await Hive.openBox<QueuedOperation>('sync_queue_$userId');
-    _conflictBox = await Hive.openBox<Map<String, dynamic>>('sync_conflicts_$userId');
+    _conflictBox = await Hive.openBox<Map<String, dynamic>>(
+      'sync_conflicts_$userId',
+    );
 
     // Setup connectivity monitoring
-    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
+      _onConnectivityChanged,
+    );
 
     // Check initial connectivity
     final results = await _connectivity.checkConnectivity();
@@ -200,7 +204,9 @@ class OfflineSyncManager {
         await _executeOperation(operation);
         successfulOps.add(operation.id);
       } catch (e) {
-        final updatedOp = operation.copyWith(retryCount: operation.retryCount + 1);
+        final updatedOp = operation.copyWith(
+          retryCount: operation.retryCount + 1,
+        );
 
         if (updatedOp.retryCount >= maxRetries) {
           // Move to conflicts if max retries exceeded
@@ -257,12 +263,17 @@ class OfflineSyncManager {
   }
 
   /// Resolve a conflict
-  Future<void> resolveConflict(String conflictId, Map<String, dynamic> resolutionData) async {
+  Future<void> resolveConflict(
+    String conflictId,
+    Map<String, dynamic> resolutionData,
+  ) async {
     final conflict = _conflictBox.get(conflictId);
     if (conflict == null) return;
 
     try {
-      final operation = QueuedOperation.fromMap(conflict['operation'] as Map<String, dynamic>);
+      final operation = QueuedOperation.fromMap(
+        conflict['operation'] as Map<String, dynamic>,
+      );
       final updatedOperation = QueuedOperation(
         id: operation.id,
         collection: operation.collection,
@@ -370,7 +381,9 @@ class OfflineSyncManager {
   Future<DateTime?> _getLastSyncTime() async {
     final prefs = await SharedPreferences.getInstance();
     final timestamp = prefs.getInt('last_sync_time');
-    return timestamp != null ? DateTime.fromMillisecondsSinceEpoch(timestamp) : null;
+    return timestamp != null
+        ? DateTime.fromMillisecondsSinceEpoch(timestamp)
+        : null;
   }
 
   /// Clear all queued operations (use with caution)

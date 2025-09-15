@@ -15,7 +15,8 @@ class BackgroundHealthService {
   static const String _stepCountKey = 'last_step_count';
   static const String _lastSyncKey = 'last_sync_time';
 
-  static final BackgroundHealthService _instance = BackgroundHealthService._internal();
+  static final BackgroundHealthService _instance =
+      BackgroundHealthService._internal();
   factory BackgroundHealthService() => _instance;
   BackgroundHealthService._internal();
 
@@ -113,8 +114,13 @@ class BackgroundHealthService {
         HealthDataType.DISTANCE_WALKING_RUNNING,
       ];
 
-      final permissions = healthTypes.map((type) => HealthDataAccess.READ).toList();
-      final hasHealthPermissions = await health.requestAuthorization(healthTypes, permissions: permissions);
+      final permissions = healthTypes
+          .map((type) => HealthDataAccess.READ)
+          .toList();
+      final hasHealthPermissions = await health.requestAuthorization(
+        healthTypes,
+        permissions: permissions,
+      );
 
       return hasHealthPermissions;
     } catch (e) {
@@ -169,10 +175,7 @@ class BackgroundHealthService {
         unit: 'steps',
         recordedAt: DateTime.now(),
         source: HealthDataSource.phone,
-        metadata: {
-          'totalSteps': totalSteps,
-          'background': true,
-        },
+        metadata: {'totalSteps': totalSteps, 'background': true},
       );
 
       // Store in SharedPreferences for background tasks
@@ -182,7 +185,6 @@ class BackgroundHealthService {
       pendingData.add(metric.id);
       await prefs.setString('health_metric_${metric.id}', metric.toString());
       await prefs.setStringList('pending_health_data', pendingData);
-
     } catch (e) {
       debugPrint('Error storing step data locally: $e');
     }
@@ -245,7 +247,8 @@ Future<bool> _performStepTracking(String userId) async {
 
     // Process and store step data
     for (final data in healthData) {
-      if (data.type == HealthDataType.STEPS && data.value is NumericHealthValue) {
+      if (data.type == HealthDataType.STEPS &&
+          data.value is NumericHealthValue) {
         final steps = (data.value as NumericHealthValue).numericValue.toInt();
 
         final metric = HealthMetric(
@@ -256,10 +259,7 @@ Future<bool> _performStepTracking(String userId) async {
           unit: 'steps',
           recordedAt: data.dateTo,
           source: HealthDataSource.phone,
-          metadata: {
-            'background': true,
-            'sourceId': data.sourceId,
-          },
+          metadata: {'background': true, 'sourceId': data.sourceId},
         );
 
         // Store locally for later sync
@@ -313,7 +313,10 @@ Future<bool> _performHealthSync(String userId) async {
     }
 
     // Update last sync time
-    await prefs.setInt(BackgroundHealthService._lastSyncKey, DateTime.now().millisecondsSinceEpoch);
+    await prefs.setInt(
+      BackgroundHealthService._lastSyncKey,
+      DateTime.now().millisecondsSinceEpoch,
+    );
 
     return true;
   } catch (e) {
