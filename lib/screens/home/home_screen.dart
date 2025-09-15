@@ -353,14 +353,22 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                             'Find Booth',
                             Icons.location_on,
                             () {
-                              // TODO: Navigate to booth finder
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => const BoothsScreen(),
+                                ),
+                              );
                             },
                           ),
                           _buildActionButton(
                             'Upload Document',
                             Icons.upload_file,
                             () {
-                              // TODO: Navigate to document upload
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => const DocumentsScreen(),
+                                ),
+                              );
                             },
                           ),
                         ],
@@ -568,7 +576,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               const Spacer(),
               TextButton(
                 onPressed: () {
-                  // TODO: Navigate to documents screen
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const DocumentsScreen(),
+                    ),
+                  );
                 },
                 child: Text(
                   'View All',
@@ -684,7 +696,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
           TextButton(
             onPressed: () {
-              // TODO: Navigate to document upload
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const DocumentsScreen(),
+                ),
+              );
             },
             child: Text(
               'Upload',

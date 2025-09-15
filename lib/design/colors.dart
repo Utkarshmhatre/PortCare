@@ -28,6 +28,12 @@ class AppColors {
   static const Color glass = Color(0x99FFFFFF); // rgba(255,255,255,0.6)
   static const Color danger = Color(0xFFFF6B6B);
   static const Color success = Color(0xFF21C17E);
+  static const Color warning = Color(0xFFFFDF7A);
+
+  // Additional UI Colors
+  static const Color onPrimary = Color(0xFFFFFFFF);
+  static const Color onSuccess = Color(0xFFFFFFFF);
+  static const Color onDanger = Color(0xFFFFFFFF);
 
   // Border Colors
   static const Color borderDefault = Color(0xFFE6E1DD);

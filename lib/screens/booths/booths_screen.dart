@@ -8,6 +8,7 @@ import '../../models/booth.dart';
 import '../../repositories/booth_repository.dart';
 import '../../services/location_service.dart';
 import 'booth_details_screen.dart';
+import '../qr/qr_scanner_screen.dart';
 
 class BoothsScreen extends StatefulWidget {
   const BoothsScreen({super.key});
@@ -40,6 +41,51 @@ class _BoothsScreenState extends State<BoothsScreen> {
   void dispose() {
     _boothsSubscription?.cancel();
     super.dispose();
+  }
+
+  void _scanBoothQR() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => QRScannerScreen(
+          title: 'Scan Booth QR',
+          subtitle: 'Scan the QR code to check into a booth',
+          onCodeScanned: (code) {
+            _handleQRCodeScanned(code);
+          },
+        ),
+      ),
+    );
+  }
+
+  void _handleQRCodeScanned(String code) {
+    try {
+      // Find booth by ID from QR code
+      final booth = _booths.firstWhere(
+        (b) => b.id == code,
+        orElse: () => throw Exception('Booth not found'),
+      );
+
+      // Navigate to booth details
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => BoothDetailsScreen(booth: booth),
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Found booth: ${booth.name}'),
+          backgroundColor: AppColors.accentGreen,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Invalid QR code or booth not found'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    }
   }
 
   void _subscribeToBooths() {
@@ -167,6 +213,11 @@ class _BoothsScreenState extends State<BoothsScreen> {
         backgroundColor: AppColors.surface,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: Icon(Icons.qr_code_scanner, color: AppColors.primary),
+            onPressed: _scanBoothQR,
+            tooltip: 'Scan QR Code',
+          ),
           IconButton(
             icon: Icon(
               _showMapView ? Icons.list : Icons.map,

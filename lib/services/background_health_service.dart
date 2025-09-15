@@ -62,7 +62,7 @@ class BackgroundHealthService {
       _stepTrackingTask,
       frequency: const Duration(minutes: 15),
       constraints: Constraints(
-        networkType: NetworkType.not_required,
+        networkType: NetworkType.unmetered,
         requiresBatteryNotLow: true,
         requiresCharging: false,
         requiresDeviceIdle: false,

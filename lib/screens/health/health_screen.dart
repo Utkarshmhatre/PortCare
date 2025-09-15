@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../design/colors.dart';
 import '../../design/typography.dart';
@@ -24,18 +24,43 @@ class _HealthScreenState extends State<HealthScreen>
   List<HealthGoal> _activeGoals = [];
   List<Consultation> _recentConsultations = [];
   bool _isLoading = true;
+  bool _permissionsGranted = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _initializeHealthData();
+    _healthService = HealthService();
+    _initializeHealthService();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _healthService = Provider.of<HealthService>(context, listen: false);
+  Future<void> _initializeHealthService() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Initialize health service
+      await _healthService.initialize(user.uid);
+
+      // Request permissions
+      _permissionsGranted = await _healthService.requestPermissions();
+
+      if (_permissionsGranted) {
+        // Start data collection
+        await _healthService.startDataCollection();
+      }
+
+      // Load initial data
+      await _initializeHealthData();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error initializing health service: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _initializeHealthData() async {

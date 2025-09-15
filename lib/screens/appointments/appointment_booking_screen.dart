@@ -1,13 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../design/colors.dart';
 import '../../design/typography.dart';
 import '../../design/tokens.dart';
+import '../../models/doctor.dart';
 import '../../models/booth.dart';
+import '../../repositories/appointment_repository.dart';
+import '../../repositories/doctor_repository.dart';
+import '../../repositories/booth_repository.dart';
 
 class AppointmentBookingScreen extends StatefulWidget {
   final Booth? preselectedBooth;
+  final Doctor? preselectedDoctor;
 
-  const AppointmentBookingScreen({super.key, this.preselectedBooth});
+  const AppointmentBookingScreen({
+    super.key,
+    this.preselectedBooth,
+    this.preselectedDoctor,
+  });
 
   @override
   State<AppointmentBookingScreen> createState() =>
@@ -15,32 +25,72 @@ class AppointmentBookingScreen extends StatefulWidget {
 }
 
 class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
-  DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
-  String? _selectedDoctor;
-  String? _selectedBooth;
+  final AppointmentRepository _appointmentRepository = AppointmentRepository();
+  final DoctorRepository _doctorRepository = DoctorRepository();
+  final BoothRepository _boothRepository = BoothRepository();
   final TextEditingController _notesController = TextEditingController();
 
-  final List<String> _doctors = [
-    'Dr. Smith',
-    'Dr. Johnson',
-    'Dr. Williams',
-    'Dr. Brown',
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
+  Doctor? _selectedDoctor;
+  Booth? _selectedBooth;
+
+  List<Doctor> _doctors = [];
+  List<Booth> _booths = [];
+  bool _isLoading = false;
+  bool _isBooking = false;
+
+  final List<TimeOfDay> _availableSlots = [
+    const TimeOfDay(hour: 9, minute: 0),
+    const TimeOfDay(hour: 9, minute: 30),
+    const TimeOfDay(hour: 10, minute: 0),
+    const TimeOfDay(hour: 10, minute: 30),
+    const TimeOfDay(hour: 11, minute: 0),
+    const TimeOfDay(hour: 11, minute: 30),
+    const TimeOfDay(hour: 14, minute: 0),
+    const TimeOfDay(hour: 14, minute: 30),
+    const TimeOfDay(hour: 15, minute: 0),
+    const TimeOfDay(hour: 15, minute: 30),
+    const TimeOfDay(hour: 16, minute: 0),
+    const TimeOfDay(hour: 16, minute: 30),
   ];
-  final List<String> _booths = ['Booth A1', 'Booth B2', 'Booth C3', 'Booth D4'];
 
   @override
   void initState() {
     super.initState();
-    if (widget.preselectedBooth != null) {
-      _selectedBooth = widget.preselectedBooth!.name;
-    }
+    _selectedBooth = widget.preselectedBooth;
+    _selectedDoctor = widget.preselectedDoctor;
+    _loadData();
   }
 
   @override
   void dispose() {
     _notesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final doctorsFuture = _doctorRepository.getAll();
+      final boothsFuture = _boothRepository.getAvailableBooths(limit: 50);
+
+      final results = await Future.wait([doctorsFuture, boothsFuture]);
+
+      setState(() {
+        _doctors = results[0] as List<Doctor>;
+        _booths = results[1] as List<Booth>;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading data: $e')));
+      }
+    }
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -53,18 +103,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
-      });
-    }
-  }
-
-  Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: const TimeOfDay(hour: 9, minute: 0),
-    );
-    if (picked != null && picked != _selectedTime) {
-      setState(() {
-        _selectedTime = picked;
+        _selectedTime = null; // Reset time when date changes
       });
     }
   }
@@ -76,22 +115,95 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
         _selectedBooth != null;
   }
 
-  void _bookAppointment() {
-    if (!_canBookAppointment()) return;
+  Future<void> _bookAppointment() async {
+    if (!_canBookAppointment() || _isBooking) return;
 
-    // TODO: Implement actual booking logic with Firestore
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Appointment booked successfully!'),
-        backgroundColor: AppColors.success,
-      ),
+    setState(() => _isBooking = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final appointmentDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedTime!.hour,
+        _selectedTime!.minute,
+      );
+
+      await _appointmentRepository.bookAppointment(
+        patientId: user.uid,
+        doctorId: _selectedDoctor!.id,
+        boothId: _selectedBooth!.id,
+        scheduledDateTime: appointmentDateTime,
+        durationMinutes: 30,
+        notes: _notesController.text.isNotEmpty ? _notesController.text : null,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Appointment booked successfully!'),
+            backgroundColor: AppColors.accentGreen,
+          ),
+        );
+        Navigator.of(context).pop(true); // Return success
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Booking failed: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isBooking = false);
+      }
+    }
+  }
+
+  Future<void> _selectTime(BuildContext context) async {
+    if (_selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a date first')),
+      );
+      return;
+    }
+
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 9, minute: 0),
     );
-
-    Navigator.of(context).pop();
+    if (picked != null && picked != _selectedTime) {
+      setState(() {
+        _selectedTime = picked;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.canvas,
+        appBar: AppBar(
+          title: Text(
+            'Book Appointment',
+            style: AppTypography.h1Style.copyWith(color: AppColors.textPrimary),
+          ),
+          backgroundColor: AppColors.surface,
+          elevation: 0,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
@@ -213,7 +325,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                   borderRadius: AppRadius.mdRadius,
                   border: Border.all(color: AppColors.uiStroke, width: 1),
                 ),
-                child: DropdownButton<String>(
+                child: DropdownButton<Doctor>(
                   value: _selectedDoctor,
                   hint: Text(
                     'Choose a doctor',
@@ -224,13 +336,26 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                   isExpanded: true,
                   underline: const SizedBox(),
                   items: _doctors.map((doctor) {
-                    return DropdownMenuItem<String>(
+                    return DropdownMenuItem<Doctor>(
                       value: doctor,
-                      child: Text(
-                        doctor,
-                        style: AppTypography.bodyLargeStyle.copyWith(
-                          color: AppColors.textPrimary,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            doctor.name,
+                            style: AppTypography.bodyLargeStyle.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            doctor.specialization.displayName,
+                            style: AppTypography.bodySmallStyle.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   }).toList(),
@@ -259,7 +384,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                   borderRadius: AppRadius.mdRadius,
                   border: Border.all(color: AppColors.uiStroke, width: 1),
                 ),
-                child: DropdownButton<String>(
+                child: DropdownButton<Booth>(
                   value: _selectedBooth,
                   hint: Text(
                     'Choose a booth',
@@ -270,13 +395,28 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                   isExpanded: true,
                   underline: const SizedBox(),
                   items: _booths.map((booth) {
-                    return DropdownMenuItem<String>(
+                    return DropdownMenuItem<Booth>(
                       value: booth,
-                      child: Text(
-                        booth,
-                        style: AppTypography.bodyLargeStyle.copyWith(
-                          color: AppColors.textPrimary,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            booth.name,
+                            style: AppTypography.bodyLargeStyle.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            booth.status.displayName,
+                            style: AppTypography.bodySmallStyle.copyWith(
+                              color: booth.status == BoothStatus.available
+                                  ? AppColors.accentGreen
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   }).toList(),
@@ -340,7 +480,9 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                 width: double.infinity,
                 height: AppSizes.primaryButtonHeight,
                 child: ElevatedButton(
-                  onPressed: _canBookAppointment() ? _bookAppointment : null,
+                  onPressed: _canBookAppointment() && !_isBooking
+                      ? _bookAppointment
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: AppColors.surface,
@@ -350,12 +492,23 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                       borderRadius: AppRadius.mdRadius,
                     ),
                   ),
-                  child: Text(
-                    'Book Appointment',
-                    style: AppTypography.buttonStyle.copyWith(
-                      color: AppColors.surface,
-                    ),
-                  ),
+                  child: _isBooking
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.surface,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          'Book Appointment',
+                          style: AppTypography.buttonStyle.copyWith(
+                            color: AppColors.surface,
+                          ),
+                        ),
                 ),
               ),
             ],
