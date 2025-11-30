@@ -23,7 +23,7 @@ class DoctorRepository extends BaseRepository<Doctor> {
           .where('isActive', isEqualTo: true)
           .orderBy('name')
           .startAt([name.toLowerCase()])
-          .endAt([name.toLowerCase() + '\uf8ff'])
+          .endAt(['${name.toLowerCase()}\uf8ff'])
           .limit(limit)
           .get();
 

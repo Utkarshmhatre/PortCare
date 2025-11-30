@@ -24,11 +24,29 @@ class AuthProvider extends ChangeNotifier {
     _initializeAuthListener();
   }
 
+  // Flag to prevent race condition when signing in
+  bool _isSigningIn = false;
+
   void _initializeAuthListener() {
     _authService.authStateChanges.listen((User? firebaseUser) async {
+      // Skip if we're in the middle of a sign-in process
+      // The sign-in method will handle the state update
+      if (_isSigningIn) {
+        return;
+      }
+
       if (firebaseUser != null) {
-        // User is signed in, get profile
-        final appUser = await _authService.getUserProfile(firebaseUser.uid);
+        // User is signed in, try to get profile with retry
+        AppUser? appUser;
+        
+        // Retry a few times in case document is still being written
+        for (int i = 0; i < 3; i++) {
+          appUser = await _authService.getUserProfile(firebaseUser.uid);
+          if (appUser != null) break;
+          // Wait before retry
+          await Future.delayed(Duration(milliseconds: 500 * (i + 1)));
+        }
+        
         if (appUser != null) {
           _user = appUser;
           _firebaseUser = firebaseUser;
@@ -60,28 +78,34 @@ class AuthProvider extends ChangeNotifier {
     required String email,
     required String password,
   }) async {
+    _isSigningIn = true;
     _setLoading();
 
-    final result = await _authService.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    try {
+      final result = await _authService.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    if (result.isSuccess) {
-      _user = result.user;
-      _status = AuthStatus.authenticated;
-      _clearError();
-      notifyListeners();
-      return true;
-    } else if (result.needsProfileSetup) {
-      _firebaseUser = result.firebaseUser;
-      _status = AuthStatus.unauthenticated;
-      _clearError();
-      notifyListeners();
-      return true; // Will redirect to profile setup
-    } else {
-      _setError(result.error ?? 'Sign in failed');
-      return false;
+      if (result.isSuccess) {
+        _user = result.user;
+        _firebaseUser = FirebaseAuth.instance.currentUser;
+        _status = AuthStatus.authenticated;
+        _clearError();
+        notifyListeners();
+        return true;
+      } else if (result.needsProfileSetup) {
+        _firebaseUser = result.firebaseUser;
+        _status = AuthStatus.unauthenticated;
+        _clearError();
+        notifyListeners();
+        return true; // Will redirect to profile setup
+      } else {
+        _setError(result.error ?? 'Sign in failed');
+        return false;
+      }
+    } finally {
+      _isSigningIn = false;
     }
   }
 
@@ -111,25 +135,31 @@ class AuthProvider extends ChangeNotifier {
 
   // Sign in with Google
   Future<bool> signInWithGoogle() async {
+    _isSigningIn = true;
     _setLoading();
 
-    final result = await _authService.signInWithGoogle();
+    try {
+      final result = await _authService.signInWithGoogle();
 
-    if (result.isSuccess) {
-      _user = result.user;
-      _status = AuthStatus.authenticated;
-      _clearError();
-      notifyListeners();
-      return true;
-    } else if (result.needsProfileSetup) {
-      _firebaseUser = result.firebaseUser;
-      _status = AuthStatus.unauthenticated;
-      _clearError();
-      notifyListeners();
-      return true; // Will redirect to profile setup
-    } else {
-      _setError(result.error ?? 'Google sign-in failed');
-      return false;
+      if (result.isSuccess) {
+        _user = result.user;
+        _firebaseUser = FirebaseAuth.instance.currentUser;
+        _status = AuthStatus.authenticated;
+        _clearError();
+        notifyListeners();
+        return true;
+      } else if (result.needsProfileSetup) {
+        _firebaseUser = result.firebaseUser;
+        _status = AuthStatus.unauthenticated;
+        _clearError();
+        notifyListeners();
+        return true; // Will redirect to profile setup
+      } else {
+        _setError(result.error ?? 'Google sign-in failed');
+        return false;
+      }
+    } finally {
+      _isSigningIn = false;
     }
   }
 

@@ -6,7 +6,7 @@ import 'package:portcare/services/auth_service.dart';
 import 'package:portcare/screens/auth/login_screen.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
-  const ProfileSettingsScreen({Key? key}) : super(key: key);
+  const ProfileSettingsScreen({super.key});
 
   @override
   State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
@@ -362,7 +362,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: AppColors.primary,
+        activeThumbColor: AppColors.primary,
       ),
     );
   }

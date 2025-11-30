@@ -251,7 +251,7 @@ class BoothRepository extends BaseRepository<Booth> {
       final query = await collection
           .orderBy('name')
           .startAt([name])
-          .endAt([name + '\uf8ff'])
+          .endAt(['$name\uf8ff'])
           .limit(limit)
           .get();
 

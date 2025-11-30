@@ -66,7 +66,7 @@ class DocumentService {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final extension = path.extension(file.name);
       final storagePath =
-          'documents/${user.uid}/${timestamp}_${fileName}${extension}';
+          'documents/${user.uid}/${timestamp}_$fileName$extension';
 
       // Upload to Firebase Storage
       final uploadTask = _storage

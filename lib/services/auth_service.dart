@@ -85,9 +85,23 @@ class AuthService {
   // Sign in with Google
   Future<AuthResult> signInWithGoogle() async {
     try {
-      // Trigger the authentication flow
-      final GoogleSignInAccount? googleUser =
-          await _googleSignIn.signInSilently() ?? await _googleSignIn.signIn();
+      // First try silent sign-in, then interactive sign-in
+      GoogleSignInAccount? googleUser;
+      
+      try {
+        googleUser = await _googleSignIn.signInSilently();
+      } catch (e) {
+        print('Silent sign-in failed: $e');
+      }
+      
+      if (googleUser == null) {
+        try {
+          googleUser = await _googleSignIn.signIn();
+        } catch (e) {
+          print('Interactive Google sign-in error: $e');
+          return AuthResult.failure('Google sign-in failed: ${e.toString()}');
+        }
+      }
 
       if (googleUser == null) {
         // User cancelled the sign-in

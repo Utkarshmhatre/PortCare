@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "820521949909-6gvkb30s0ofvqa3gulr3ql0kn2tf8u7a.apps.googleusercontent.com",
+          "client_id": "820521949909-99dpvqmkfhsp91ejblknksr1ekca8ihh.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.portcare",
-            "certificate_hash": "c8c48ec5c9d1b5685c231465a9111842af75a1ee"
+            "certificate_hash": "6111bff279f27eb28d50e179c4828aea34f0d50a"
           }
         },
         {

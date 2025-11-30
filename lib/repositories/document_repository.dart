@@ -71,7 +71,7 @@ class DocumentRepository extends BaseRepository<Document> {
       Query<Map<String, dynamic>> query = collection
           .orderBy('name')
           .startAt([name])
-          .endAt([name + '\uf8ff']);
+          .endAt(['$name\uf8ff']);
 
       if (userId != null) {
         // Note: This requires a composite index in Firestore

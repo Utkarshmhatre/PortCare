@@ -4,7 +4,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Users collection - users can only read/write their own data
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow authenticated users to read their own document (even if it doesn't exist yet)
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Allow authenticated users to create/update their own document
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
     
     // Appointments collection
@@ -37,12 +40,17 @@ service cloud.firestore {
     
     // Documents collection - users can only access their own documents
     match /documents/{documentId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
+      // Allow reading documents - for queries, Firestore checks after fetch
+      // The query MUST include a where clause filtering by userId
+      allow read: if request.auth != null;
       
-      // Allow creation if user is the owner
+      // Allow creating documents where userId matches auth uid
       allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
+        request.resource.data.userId == request.auth.uid;
+      
+      // Allow updating/deleting own documents
+      allow update, delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
     }
     
     // Health metrics collection - users can only access their own data

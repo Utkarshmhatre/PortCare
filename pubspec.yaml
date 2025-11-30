@@ -50,7 +50,7 @@ dependencies:
 
   # Utilities
   shared_preferences: ^2.3.2
-  path_provider: ^2.1.4
+  path_provider: ^2.1.5
   image_picker: ^1.1.2
   file_picker: ^10.3.3
   uuid: ^4.5.1
@@ -87,8 +87,10 @@ dependencies:
   qr_flutter: ^4.1.0
 
   # HTTP and Networking
-  http: ^1.2.2
+  http: ^1.6.0
   connectivity_plus: ^7.0.0
+  url_launcher: ^6.3.2
+  open_filex: ^4.7.0
 
 dev_dependencies:
   flutter_test:

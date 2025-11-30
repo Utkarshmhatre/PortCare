@@ -1,10 +1,17 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:open_filex/open_filex.dart';
 import '../../design/colors.dart';
 import '../../design/typography.dart';
 import '../../design/tokens.dart';
 import '../../models/document.dart';
 import '../../services/document_service.dart';
+import '../../providers/auth_provider.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -88,6 +95,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     DocumentType selectedType = DocumentType.other;
     String? notes;
     bool encrypt = false;
+    String autoName = _generateAutoName(selectedType);
 
     await showDialog(
       context: context,
@@ -140,8 +148,49 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                     );
                   }).toList(),
                   onChanged: (value) {
-                    setDialogState(() => selectedType = value!);
+                    setDialogState(() {
+                      selectedType = value!;
+                      // Update auto name when type changes
+                      autoName = _generateAutoName(selectedType);
+                    });
                   },
+                ),
+                SizedBox(height: AppSpacing.md),
+                
+                // Auto-generated name preview
+                Container(
+                  padding: AppSpacing.mdAll,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: AppRadius.smRadius,
+                    border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.auto_awesome, color: AppColors.primary, size: 18),
+                      SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Auto-generated name:',
+                              style: AppTypography.captionStyle.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            Text(
+                              autoName,
+                              style: AppTypography.bodyLargeStyle.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 SizedBox(height: AppSpacing.md),
 
@@ -193,7 +242,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _uploadDocument(file, selectedType, notes, encrypt);
+                await _uploadDocument(file, selectedType, autoName, notes, encrypt);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -211,6 +260,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   Future<void> _uploadDocument(
     PlatformFile file,
     DocumentType type,
+    String customName,
     String? notes,
     bool encrypt,
   ) async {
@@ -218,6 +268,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       await _documentService.uploadDocument(
         file: file,
         type: type,
+        customName: customName,
         notes: notes,
         encrypt: encrypt,
       );
@@ -298,7 +349,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 
   List<Document> get _filteredDocuments {
-    return _documents.where((doc) {
+    final filtered = _documents.where((doc) {
       if (_searchQuery.isNotEmpty &&
           !doc.name.toLowerCase().contains(_searchQuery.toLowerCase()) &&
           !(doc.description?.toLowerCase().contains(
@@ -312,6 +363,84 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       }
       return true;
     }).toList();
+    
+    // Sort by createdAt descending (newest first)
+    filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return filtered;
+  }
+
+  /// Generate auto name based on type, user name, and date
+  String _generateAutoName(DocumentType type) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userName = authProvider.user?.name.split(' ').first ?? 'User';
+    final date = DateFormat('ddMMMyyyy').format(DateTime.now());
+    return '${type.displayName}_${userName}_$date';
+  }
+
+  /// Open document for viewing
+  Future<void> _viewDocument(Document document) async {
+    try {
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Opening document...'), duration: Duration(seconds: 1)),
+        );
+      }
+
+      // Get the temporary directory
+      final tempDir = await getTemporaryDirectory();
+      
+      // Create a filename from the document name
+      final fileName = document.name.replaceAll(RegExp(r'[^\w\s\-.]'), '_');
+      final extension = _getFileExtension(document.fileUrl, document.mimeType);
+      final filePath = '${tempDir.path}/$fileName$extension';
+      
+      // Download the file
+      final response = await http.get(Uri.parse(document.fileUrl));
+      if (response.statusCode == 200) {
+        final file = File(filePath);
+        await file.writeAsBytes(response.bodyBytes);
+        
+        // Open the file with system default app
+        final result = await OpenFilex.open(filePath);
+        
+        if (result.type != ResultType.done && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Cannot open file: ${result.message}')),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to download document')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error opening document: $e')),
+        );
+      }
+    }
+  }
+
+  /// Get file extension from URL or file type
+  String _getFileExtension(String url, String fileType) {
+    // Try to get from URL
+    final urlPath = Uri.parse(url).path;
+    final match = RegExp(r'\.(\w+)(?:\?|$)').firstMatch(urlPath);
+    if (match != null) {
+      return '.${match.group(1)}';
+    }
+    
+    // Fallback to file type
+    if (fileType.contains('pdf')) return '.pdf';
+    if (fileType.contains('jpeg') || fileType.contains('jpg')) return '.jpg';
+    if (fileType.contains('png')) return '.png';
+    if (fileType.contains('image')) return '.jpg';
+    
+    return '';
   }
 
   @override
@@ -368,7 +497,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                             Expanded(
                               flex: 2,
                               child: DropdownButtonFormField<DocumentType?>(
-                                value: _selectedFilter,
+                                initialValue: _selectedFilter,
                                 decoration: InputDecoration(
                                   labelText: 'Filter by type',
                                   border: OutlineInputBorder(
@@ -505,6 +634,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 
   Widget _buildDocumentCard(Document document) {
+    final isImage = document.mimeType.startsWith('image/');
+    
     return Container(
       margin: EdgeInsets.symmetric(vertical: AppSpacing.sm),
       decoration: BoxDecoration(
@@ -512,32 +643,81 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         borderRadius: AppRadius.mdRadius,
         boxShadow: AppElevation.low,
       ),
-      child: ListTile(
-        contentPadding: AppSpacing.mdAll,
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: _getDocumentTypeColor(document.type).withOpacity(0.1),
-            borderRadius: AppRadius.smRadius,
+      child: InkWell(
+        onTap: () => _viewDocument(document),
+        borderRadius: AppRadius.mdRadius,
+        child: ListTile(
+          contentPadding: AppSpacing.mdAll,
+          leading: isImage && document.thumbnailUrl != null
+              ? ClipRRect(
+                  borderRadius: AppRadius.smRadius,
+                  child: Image.network(
+                    document.thumbnailUrl!,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: _getDocumentTypeColor(document.type).withOpacity(0.1),
+                        borderRadius: AppRadius.smRadius,
+                      ),
+                      child: Icon(
+                        _getDocumentTypeIcon(document.type),
+                        color: _getDocumentTypeColor(document.type),
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                )
+              : isImage
+                  ? ClipRRect(
+                      borderRadius: AppRadius.smRadius,
+                      child: Image.network(
+                        document.fileUrl,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: _getDocumentTypeColor(document.type).withOpacity(0.1),
+                            borderRadius: AppRadius.smRadius,
+                          ),
+                          child: Icon(
+                            _getDocumentTypeIcon(document.type),
+                            color: _getDocumentTypeColor(document.type),
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: _getDocumentTypeColor(document.type).withOpacity(0.1),
+                        borderRadius: AppRadius.smRadius,
+                      ),
+                      child: Icon(
+                        _getDocumentTypeIcon(document.type),
+                        color: _getDocumentTypeColor(document.type),
+                        size: 24,
+                      ),
+                    ),
+          title: Text(
+            document.name,
+            style: AppTypography.bodyLargeStyle.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          child: Icon(
-            _getDocumentTypeIcon(document.type),
-            color: _getDocumentTypeColor(document.type),
-            size: 24,
-          ),
-        ),
-        title: Text(
-          document.name,
-          style: AppTypography.bodyLargeStyle.copyWith(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
               document.type.displayName,
               style: AppTypography.bodySmallStyle.copyWith(
                 color: AppColors.textSecondary,
@@ -570,12 +750,25 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
             PopupMenuButton<String>(
               onSelected: (value) {
                 switch (value) {
+                  case 'view':
+                    _viewDocument(document);
+                    break;
                   case 'delete':
                     _deleteDocument(document);
                     break;
                 }
               },
               itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'view',
+                  child: Row(
+                    children: [
+                      Icon(Icons.visibility, color: AppColors.primary, size: 16),
+                      SizedBox(width: AppSpacing.sm),
+                      Text('View'),
+                    ],
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'delete',
                   child: Row(
@@ -589,6 +782,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               ],
             ),
           ],
+        ),
         ),
       ),
     );

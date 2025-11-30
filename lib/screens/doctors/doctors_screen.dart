@@ -127,7 +127,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
 
                         // Specialization Filter
                         DropdownButtonFormField<DoctorSpecialization?>(
-                          value: _selectedSpecialization,
+                          initialValue: _selectedSpecialization,
                           decoration: InputDecoration(
                             labelText: 'Filter by specialization',
                             border: OutlineInputBorder(
